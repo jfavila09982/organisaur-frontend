@@ -140,3 +140,8 @@ Possible placements include:
 - A dedicated Dino World page
 
 The main todo tools should always remain the primary part of the interface.
+
+<img width="1672" height="941" alt="organisaur_UI_version_1_progress" src="https://github.com/user-attachments/assets/c3b5b332-10b1-4de2-b46e-18004df34053" />
+<img width="1672" height="941" alt="organisaur_UI_version_1_2026_07_26" src="https://github.com/user-attachments/assets/a03b86e6-b24c-4a4d-bcb8-388285cc776c" />
+
+
