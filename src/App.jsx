@@ -15,39 +15,40 @@ function App() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-icon">
-            <Leaf size={24} />
+            <Leaf size={19} strokeWidth={2} />
           </div>
 
-          <div>
+          <div className="brand-copy">
             <h1>Organisaur</h1>
             <p>Organize today. Evolve tomorrow.</p>
           </div>
         </div>
 
-        <nav className="navigation">
-          <a href="#" className="nav-item">
-            <CalendarDays size={20} />
+        <nav className="navigation" aria-label="Main navigation">
+          <a href="#today" className="nav-item">
+            <CalendarDays size={18} strokeWidth={1.9} />
             <span>Today</span>
           </a>
 
-          <a href="#" className="nav-item active">
-            <ListTodo size={20} />
+          <a href="#todos" className="nav-item active">
+            <ListTodo size={18} strokeWidth={1.9} />
             <span>Todos</span>
           </a>
 
-          <a href="#" className="nav-item">
-            <Timer size={20} />
+          <a href="#focus" className="nav-item">
+            <Timer size={18} strokeWidth={1.9} />
             <span>Focus Mode</span>
           </a>
 
-          <a href="#" className="nav-item">
-            <Settings size={20} />
+          <a href="#settings" className="nav-item">
+            <Settings size={18} strokeWidth={1.9} />
             <span>Settings</span>
           </a>
         </nav>
 
         <div className="sidebar-message">
-          <Leaf size={20} />
+          <Leaf size={17} strokeWidth={2} />
+
           <p>
             Stay steady.
             <br />
@@ -74,20 +75,22 @@ function App() {
           <div className="task-input-row">
             <input
               id="taskName"
+              name="taskName"
               type="text"
               placeholder="Enter a new task..."
+              autoComplete="off"
             />
 
-            <button type="button">
-              <CheckSquare size={19} />
-              Add Todo
+            <button type="button" className="primary-button">
+              <CheckSquare size={18} strokeWidth={2} />
+              <span>Add Todo</span>
             </button>
           </div>
         </section>
 
         <section className="todo-section">
           <div className="todo-toolbar">
-            <div className="filters">
+            <div className="filters" aria-label="Todo filters">
               <button type="button" className="filter active">
                 All
               </button>
@@ -101,37 +104,45 @@ function App() {
               </button>
             </div>
 
-            <span>0 todos</span>
+            <span className="todo-count">0 todos</span>
           </div>
 
           <div className="empty-state">
             <div className="empty-icon">
-              <ListTodo size={38} />
+              <ListTodo size={27} strokeWidth={1.9} />
             </div>
 
             <h3>No todos yet</h3>
-            <p>Add your first task and begin growing your Organisaur.</p>
+
+            <p>
+              Add your first task and begin growing your Organisaur companion.
+            </p>
           </div>
         </section>
       </main>
 
       <aside className="companion-panel">
-        <p className="eyebrow">Your companion</p>
-        <h2>The Planner</h2>
-        <span className="stage-label">Stage 1 · Hatchling</span>
+        <div className="companion-header">
+          <p className="eyebrow">Your companion</p>
+          <h2>The Planner</h2>
+          <span className="stage-label">Stage 1 · Hatchling</span>
+        </div>
 
         <div className="mascot-placeholder">
-          <Leaf size={55} />
+          <Leaf size={48} strokeWidth={1.7} />
           <p>Planner mascot image</p>
         </div>
 
         <div className="companion-message">
           <h3>Your journey begins</h3>
-          <p>Complete tasks to help your dinosaur grow.</p>
+
+          <p>
+            Complete tasks to help your dinosaur companion grow and evolve.
+          </p>
         </div>
 
         <div className="progress-card">
-          <div>
+          <div className="progress-header">
             <span>Evolution progress</span>
             <strong>0%</strong>
           </div>
