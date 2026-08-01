@@ -7,6 +7,7 @@ import {
   Timer,
 } from "lucide-react";
 
+import organisaurLogo from "./assets/assets/logo/organisaur-logo-cropped.png";
 import "./App.css";
 
 function App() {
@@ -14,14 +15,11 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-icon">
-            <Leaf size={19} strokeWidth={2} />
-          </div>
-
-          <div className="brand-copy">
-            <h1>Organisaur</h1>
-            <p>Organize today. Evolve tomorrow.</p>
-          </div>
+          <img
+            src={organisaurLogo}
+            alt="Organisaur"
+            className="brand-logo"
+          />
         </div>
 
         <nav className="navigation" aria-label="Main navigation">
