@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  BookOpen,
   CalendarDays,
   CheckSquare,
   Egg,
@@ -23,6 +24,7 @@ import "./App.css";
 const NAV_ITEMS = [
   { key: "today", label: "Today", icon: CalendarDays },
   { key: "todos", label: "Todos", icon: ListTodo },
+  { key: "notebook", label: "NoteBook", icon: BookOpen },
   { key: "focus", label: "Focus Mode", icon: Timer },
   { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
@@ -30,6 +32,7 @@ const NAV_ITEMS = [
 const PAGE_COPY = {
   today: { eyebrow: "Your workspace", title: "Today" },
   todos: { eyebrow: "Your workspace", title: "My Todos" },
+  notebook: { eyebrow: "Your workspace", title: "NoteBook" },
   focus: { eyebrow: "Focus mode", title: "Pomodoro timer" },
   settings: { eyebrow: "Preferences", title: "Settings" },
 };
@@ -45,6 +48,18 @@ function formatTime(totalSeconds) {
   return `${minutes}:${seconds}`;
 }
 
+function createPageId() {
+  return (
+    crypto.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  );
+}
+
+function countWords(text) {
+  const trimmedText = text.trim();
+  return trimmedText ? trimmedText.split(/\s+/).length : 0;
+}
+
 function App() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -53,7 +68,14 @@ function App() {
   // Todos
   const [todos, setTodos] = useState([]);
   const [taskName, setTaskName] = useState("");
+  const [taskBody, setTaskBody] = useState("");
   const [todoFilter, setTodoFilter] = useState("all");
+  const [expandedTodoId, setExpandedTodoId] = useState(null);
+
+  // NoteBook pages are intentionally kept for the current session only.
+  const [pages, setPages] = useState([]);
+  const [selectedPageId, setSelectedPageId] = useState(null);
+  const [isNotebookPanelCollapsed, setIsNotebookPanelCollapsed] = useState(false);
 
   // Focus mode / Pomodoro settings
   const [focusMinutes, setFocusMinutes] = useState(25);
@@ -114,13 +136,20 @@ function App() {
 
   const handleAddTodo = (event) => {
     event.preventDefault();
-    const trimmed = taskName.trim();
-    if (!trimmed) return;
+    const trimmedName = taskName.trim();
+    const trimmedBody = taskBody.trim();
+    if (!trimmedName || !trimmedBody) return;
     setTodos((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), text: trimmed, completed: false },
+      {
+        id: crypto.randomUUID(),
+        taskName: trimmedName,
+        body: trimmedBody,
+        completed: false,
+      },
     ]);
     setTaskName("");
+    setTaskBody("");
   };
 
   const toggleTodo = (id) => {
@@ -133,6 +162,7 @@ function App() {
 
   const deleteTodo = (id) => {
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
+    setExpandedTodoId((currentId) => (currentId === id ? null : currentId));
   };
 
   const visibleTodos = todos.filter((todo) => {
@@ -143,6 +173,55 @@ function App() {
 
   const activeCount = todos.filter((todo) => !todo.completed).length;
   const completedCount = todos.length - activeCount;
+
+  const handleCreatePage = () => {
+    const now = new Date();
+    const newPage = {
+      id: createPageId(),
+      title: "Untitled Page",
+      content: "",
+      icon: "📄",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setPages((currentPages) => [...currentPages, newPage]);
+    setSelectedPageId(newPage.id);
+  };
+
+  const updateSelectedPage = (updates) => {
+    if (!selectedPageId) return;
+
+    setPages((currentPages) =>
+      currentPages.map((page) =>
+        page.id === selectedPageId
+          ? { ...page, ...updates, updatedAt: new Date() }
+          : page
+      )
+    );
+  };
+
+  const deletePage = (pageId) => {
+    const pageIndex = pages.findIndex((page) => page.id === pageId);
+    if (pageIndex === -1 || !window.confirm("Delete this page?")) return;
+
+    const remainingPages = pages.filter((page) => page.id !== pageId);
+    setPages(remainingPages);
+
+    if (selectedPageId === pageId) {
+      const nextPage =
+        remainingPages[pageIndex] ??
+        remainingPages[pageIndex - 1] ??
+        remainingPages[0];
+      setSelectedPageId(nextPage?.id ?? null);
+    }
+  };
+
+  const selectedPage =
+    pages.find((page) => page.id === selectedPageId) ?? null;
+  const currentPageWordCount = selectedPage
+    ? countWords(selectedPage.content)
+    : 0;
 
   return (
     <div className={`app-shell${isSidebarCollapsed ? " sidebar-collapsed" : ""}`}>
@@ -275,23 +354,46 @@ function App() {
         {activeView === "todos" && (
           <>
             <section className="create-card">
-              <label htmlFor="taskName">Task name</label>
-
               <form className="task-input-row" onSubmit={handleAddTodo}>
-                <input
-                  id="taskName"
-                  name="taskName"
-                  type="text"
-                  placeholder="Enter a new task..."
-                  autoComplete="off"
-                  value={taskName}
-                  onChange={(event) => setTaskName(event.target.value)}
-                />
+                <div className="task-fields">
+                  <div className="form-field">
+                    <label htmlFor="taskName">Task name</label>
+                    <input
+                      id="taskName"
+                      name="taskName"
+                      type="text"
+                      placeholder="Enter a new task..."
+                      autoComplete="off"
+                      required
+                      value={taskName}
+                      onChange={(event) => setTaskName(event.target.value)}
+                    />
+                  </div>
 
-                <button type="submit" className="primary-button">
-                  <CheckSquare size={18} strokeWidth={2} />
-                  <span>Add Todo</span>
-                </button>
+                  <div className="form-field">
+                    <label htmlFor="taskBody">Description</label>
+                    <textarea
+                      id="taskBody"
+                      name="body"
+                      placeholder="Describe what needs to be done..."
+                      rows={3}
+                      required
+                      value={taskBody}
+                      onChange={(event) => setTaskBody(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="task-form-actions">
+                  <button
+                    type="submit"
+                    className="primary-button add-task-button"
+                    disabled={!taskName.trim() || !taskBody.trim()}
+                  >
+                    <CheckSquare size={17} strokeWidth={2} />
+                    <span>Add task</span>
+                  </button>
+                </div>
               </form>
             </section>
 
@@ -349,28 +451,57 @@ function App() {
               ) : (
                 <ul className="todo-list">
                   {visibleTodos.map((todo) => (
-                    <li key={todo.id} className="todo-list-item">
-                      <label className="todo-checkbox">
+                    <li
+                      key={todo.id}
+                      className={`todo-list-item${
+                        expandedTodoId === todo.id ? " todo-list-item-expanded" : ""
+                      }`}
+                    >
+                      <div className="todo-content">
                         <input
+                          className="todo-checkbox"
                           type="checkbox"
                           checked={todo.completed}
+                          aria-label={`Mark ${todo.taskName} as ${
+                            todo.completed ? "active" : "completed"
+                          }`}
                           onChange={() => toggleTodo(todo.id)}
                         />
-                        <span
-                          className={
-                            todo.completed
-                              ? "todo-text todo-text-done"
-                              : "todo-text"
+                        <button
+                          type="button"
+                          className="todo-details-toggle"
+                          aria-expanded={expandedTodoId === todo.id}
+                          onClick={() =>
+                            setExpandedTodoId((currentId) =>
+                              currentId === todo.id ? null : todo.id
+                            )
                           }
                         >
-                          {todo.text}
-                        </span>
-                      </label>
+                          <span
+                            className={
+                              todo.completed
+                                ? "todo-text todo-text-done"
+                                : "todo-text"
+                            }
+                          >
+                            {todo.taskName}
+                          </span>
+                          <span
+                            className={
+                              `todo-body${todo.completed ? " todo-text-done" : ""}${
+                                expandedTodoId === todo.id ? " todo-body-expanded" : ""
+                              }`
+                            }
+                          >
+                            {todo.body}
+                          </span>
+                        </button>
+                      </div>
 
                       <button
                         type="button"
                         className="todo-delete"
-                        aria-label={`Delete ${todo.text}`}
+                        aria-label={`Delete ${todo.taskName}`}
                         onClick={() => deleteTodo(todo.id)}
                       >
                         <Trash2 size={16} strokeWidth={1.9} />
@@ -381,6 +512,171 @@ function App() {
               )}
             </section>
           </>
+        )}
+
+        {activeView === "notebook" && (
+          <section
+            className={`notebook-shell${
+              isNotebookPanelCollapsed ? " notebook-panel-collapsed" : ""
+            }`}
+          >
+            {isNotebookPanelCollapsed && (
+              <button
+                type="button"
+                className="notebook-panel-toggle notebook-panel-toggle-open"
+                aria-label="Show pages panel"
+                onClick={() => setIsNotebookPanelCollapsed(false)}
+              >
+                <PanelLeftOpen size={16} strokeWidth={1.9} />
+              </button>
+            )}
+
+            <aside className="notebook-page-panel">
+              <div className="notebook-page-header">
+                <div>
+                  <p className="notebook-section-label">Pages</p>
+                  <span className="notebook-page-count">
+                    {pages.length} {pages.length === 1 ? "page" : "pages"}
+                  </span>
+                </div>
+
+                <div className="notebook-page-actions">
+                  <button
+                    type="button"
+                    className="notebook-new-button"
+                    onClick={handleCreatePage}
+                  >
+                    <span aria-hidden="true">+</span>
+                    New
+                  </button>
+                  <button
+                    type="button"
+                    className="notebook-panel-toggle"
+                    aria-label="Hide pages panel"
+                    onClick={() => setIsNotebookPanelCollapsed(true)}
+                  >
+                    <PanelLeftClose size={16} strokeWidth={1.9} />
+                  </button>
+                </div>
+              </div>
+
+              {pages.length === 0 ? (
+                <div className="notebook-list-empty">
+                  <BookOpen size={24} strokeWidth={1.8} />
+                  <p>No pages yet</p>
+                  <button
+                    type="button"
+                    className="notebook-create-link"
+                    onClick={handleCreatePage}
+                  >
+                    Create your first page
+                  </button>
+                </div>
+              ) : (
+                <div className="notebook-page-list">
+                  {pages.map((page) => (
+                    <div
+                      key={page.id}
+                      className={`notebook-page-item${
+                        selectedPageId === page.id ? " active" : ""
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className="notebook-page-select"
+                        onClick={() => setSelectedPageId(page.id)}
+                      >
+                        <span className="notebook-page-icon" aria-hidden="true">
+                          {page.icon}
+                        </span>
+                        <span className="notebook-page-details">
+                          <strong>{page.title.trim() || "Untitled Page"}</strong>
+                          <small>{countWords(page.content)} words</small>
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="notebook-page-delete"
+                        aria-label={`Delete ${page.title || "Untitled Page"}`}
+                        onClick={() => deletePage(page.id)}
+                      >
+                        <Trash2 size={15} strokeWidth={1.9} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </aside>
+
+            <div className="notebook-editor-panel">
+              {selectedPage ? (
+                <>
+                  <div className="notebook-editor-toolbar">
+                    <span className="notebook-save-status">
+                      Saved in this session
+                    </span>
+                    <button
+                      type="button"
+                      className="notebook-delete-button"
+                      onClick={() => deletePage(selectedPage.id)}
+                    >
+                      <Trash2 size={15} strokeWidth={1.9} />
+                      Delete
+                    </button>
+                  </div>
+
+                  <div className="notebook-document">
+                    <div className="notebook-icon" aria-hidden="true">
+                      {selectedPage.icon}
+                    </div>
+                    <input
+                      className="notebook-title-input"
+                      value={selectedPage.title}
+                      aria-label="Page title"
+                      placeholder="Untitled Page"
+                      onChange={(event) =>
+                        updateSelectedPage({ title: event.target.value })
+                      }
+                    />
+                    <textarea
+                      className="notebook-content-input"
+                      value={selectedPage.content}
+                      aria-label="Page content"
+                      placeholder="Start writing your notes, ideas, plans, or study materials..."
+                      onChange={(event) =>
+                        updateSelectedPage({ content: event.target.value })
+                      }
+                    />
+                  </div>
+
+                  <footer className="notebook-editor-footer">
+                    <span>{currentPageWordCount} words</span>
+                    <span>Temporary page — refresh clears it</span>
+                  </footer>
+                </>
+              ) : (
+                <div className="notebook-editor-empty">
+                  <div className="empty-icon">
+                    <BookOpen size={27} strokeWidth={1.9} />
+                  </div>
+                  <h3>Start your NoteBook</h3>
+                  <p>
+                    Create a page for your notes, plans, ideas, or study
+                    materials.
+                  </p>
+                  <button
+                    type="button"
+                    className="primary-button notebook-empty-button"
+                    onClick={handleCreatePage}
+                  >
+                    <BookOpen size={17} strokeWidth={2} />
+                    Create first page
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
         )}
 
         {activeView === "focus" && (
