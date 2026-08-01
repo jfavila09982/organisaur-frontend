@@ -60,32 +60,69 @@ function countWords(text) {
   return trimmedText ? trimmedText.split(/\s+/).length : 0;
 }
 
+function getPagePreview(content) {
+  return content.trim().replace(/\s+/g, " ") || "No description yet";
+}
+
+function usePersistentState(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const savedValue = window.localStorage.getItem(key);
+      return savedValue === null ? initialValue : JSON.parse(savedValue);
+    } catch (error) {
+      console.warn(`Could not read "${key}" from browser storage.`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.warn(`Could not save "${key}" to browser storage.`, error);
+    }
+  }, [key, value]);
+
+  return [value, setValue];
+}
+
 function App() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState("todos");
 
   // Todos
-  const [todos, setTodos] = useState([]);
+  const [todos, setTodos] = usePersistentState("organisaur.todos", []);
   const [taskName, setTaskName] = useState("");
   const [taskBody, setTaskBody] = useState("");
   const [todoFilter, setTodoFilter] = useState("all");
   const [expandedTodoId, setExpandedTodoId] = useState(null);
 
-  // NoteBook pages are intentionally kept for the current session only.
-  const [pages, setPages] = useState([]);
-  const [selectedPageId, setSelectedPageId] = useState(null);
+  const [pages, setPages] = usePersistentState("organisaur.pages", []);
+  const [selectedPageId, setSelectedPageId] = usePersistentState(
+    "organisaur.selectedPageId",
+    null
+  );
   const [isNotebookPanelCollapsed, setIsNotebookPanelCollapsed] = useState(false);
 
   // Focus mode / Pomodoro settings
-  const [focusMinutes, setFocusMinutes] = useState(25);
-  const [breakMinutes, setBreakMinutes] = useState(5);
+  const [focusMinutes, setFocusMinutes] = usePersistentState(
+    "organisaur.focusMinutes",
+    25
+  );
+  const [breakMinutes, setBreakMinutes] = usePersistentState(
+    "organisaur.breakMinutes",
+    5
+  );
 
   // Focus mode / Pomodoro live state
   const [mode, setMode] = useState("focus");
   const [secondsLeft, setSecondsLeft] = useState(focusMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
-  const [completedSessions, setCompletedSessions] = useState(0);
+  const [completedSessions, setCompletedSessions] = usePersistentState(
+    "organisaur.completedSessions",
+    0
+  );
 
   const goTo = (key) => {
     setActiveView(key);
@@ -120,7 +157,14 @@ function App() {
     }, 1000);
 
     return () => clearTimeout(id);
-  }, [isRunning, secondsLeft, mode, focusMinutes, breakMinutes]);
+  }, [
+    isRunning,
+    secondsLeft,
+    mode,
+    focusMinutes,
+    breakMinutes,
+    setCompletedSessions,
+  ]);
 
   const handleResetTimer = () => {
     setIsRunning(false);
@@ -591,7 +635,7 @@ function App() {
                         </span>
                         <span className="notebook-page-details">
                           <strong>{page.title.trim() || "Untitled Page"}</strong>
-                          <small>{countWords(page.content)} words</small>
+                          <small>{getPagePreview(page.content)}</small>
                         </span>
                       </button>
 
@@ -614,7 +658,7 @@ function App() {
                 <>
                   <div className="notebook-editor-toolbar">
                     <span className="notebook-save-status">
-                      Saved in this session
+                      Saved in this browser
                     </span>
                     <button
                       type="button"
@@ -652,7 +696,7 @@ function App() {
 
                   <footer className="notebook-editor-footer">
                     <span>{currentPageWordCount} words</span>
-                    <span>Temporary page — refresh clears it</span>
+                    <span>Automatically saved</span>
                   </footer>
                 </>
               ) : (
