@@ -1,20 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Bold,
   BookOpen,
   CalendarDays,
   CheckSquare,
   Egg,
+  FileText,
+  Heading1,
+  Heading2,
+  Italic,
   Leaf,
+  Link,
+  List,
+  ListOrdered,
   ListTodo,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Pause,
   Play,
+  Quote,
+  Redo2,
   RotateCcw,
   Settings as SettingsIcon,
+  Share2,
+  Star,
   Timer,
   Trash2,
+  Underline,
+  Undo2,
   X,
 } from "lucide-react";
 
@@ -61,7 +75,101 @@ function countWords(text) {
 }
 
 function getPagePreview(content) {
-  return content.trim().replace(/\s+/g, " ") || "No description yet";
+  return htmlToText(content).trim().replace(/\s+/g, " ") || "No description yet";
+}
+
+function htmlToText(content = "") {
+  const container = document.createElement("div");
+  container.innerHTML = content;
+  return container.textContent ?? "";
+}
+
+function normalizeEditorHtml(content = "") {
+  if (/<[a-z][\s\S]*>/i.test(content)) return content;
+  const container = document.createElement("div");
+  container.textContent = content;
+  return container.innerHTML.replace(/\r?\n/g, "<br>");
+}
+
+function getLastEditedLabel(updatedAt) {
+  const elapsedSeconds = Math.max(0, (Date.now() - new Date(updatedAt).getTime()) / 1000);
+  if (elapsedSeconds < 60) return "Edited just now";
+  if (elapsedSeconds < 3600) return `Last edited ${Math.floor(elapsedSeconds / 60)} min ago`;
+  if (elapsedSeconds < 86400) return `Last edited ${Math.floor(elapsedSeconds / 3600)} hr ago`;
+  return `Last edited ${Math.floor(elapsedSeconds / 86400)} day${elapsedSeconds < 172800 ? "" : "s"} ago`;
+}
+
+const FORMAT_ACTIONS = [
+  { command: "bold", label: "Bold", icon: Bold },
+  { command: "italic", label: "Italic", icon: Italic },
+  { command: "underline", label: "Underline", icon: Underline },
+  { command: "insertUnorderedList", label: "Bullet list", icon: List },
+  { command: "insertOrderedList", label: "Numbered list", icon: ListOrdered },
+  { command: "formatBlock", value: "blockquote", label: "Quote", icon: Quote },
+];
+
+function RichTextEditor({ content, isRichText, onChange }) {
+  const editorRef = useRef(null);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const nextHtml = isRichText ? content : normalizeEditorHtml(content);
+    if (editor && editor.innerHTML !== nextHtml) editor.innerHTML = nextHtml;
+  }, [content, isRichText]);
+
+  const runCommand = (command, value) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    onChange(editorRef.current?.innerHTML ?? "");
+  };
+
+  const addLink = () => {
+    const url = window.prompt("Paste a link URL");
+    if (url) runCommand("createLink", url);
+  };
+
+  return (
+    <div className="notebook-rich-editor">
+      <div className="notebook-format-toolbar" role="toolbar" aria-label="Text formatting">
+        <button type="button" title="Heading 1" aria-label="Heading 1" onMouseDown={(event) => { event.preventDefault(); runCommand("formatBlock", "h1"); }}>
+          <Heading1 size={17} />
+        </button>
+        <button type="button" title="Heading 2" aria-label="Heading 2" onMouseDown={(event) => { event.preventDefault(); runCommand("formatBlock", "h2"); }}>
+          <Heading2 size={17} />
+        </button>
+        <span className="notebook-toolbar-divider" />
+        {FORMAT_ACTIONS.map(({ command, value, label, icon: Icon }) => (
+          <button key={label} type="button" title={label} aria-label={label} onMouseDown={(event) => { event.preventDefault(); runCommand(command, value); }}>
+            <Icon size={16} />
+          </button>
+        ))}
+        <button type="button" title="Add link" aria-label="Add link" onMouseDown={(event) => { event.preventDefault(); addLink(); }}><Link size={16} /></button>
+        <span className="notebook-toolbar-divider" />
+        <button type="button" title="Undo" aria-label="Undo" onMouseDown={(event) => { event.preventDefault(); runCommand("undo"); }}><Undo2 size={16} /></button>
+        <button type="button" title="Redo" aria-label="Redo" onMouseDown={(event) => { event.preventDefault(); runCommand("redo"); }}><Redo2 size={16} /></button>
+      </div>
+      <div
+        ref={editorRef}
+        className="notebook-content-input"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-label="Page content"
+        aria-multiline="true"
+        data-placeholder="Start writing your notes, ideas, plans, or study materials..."
+        onInput={(event) => onChange(event.currentTarget.innerHTML)}
+      />
+      <button
+        type="button"
+        className="notebook-assistant-button"
+        aria-label="Focus writing area"
+        title="Focus writing area"
+        onClick={() => editorRef.current?.focus()}
+      >
+        <Leaf size={15} strokeWidth={2.2} />
+      </button>
+    </div>
+  );
 }
 
 function usePersistentState(key, initialValue) {
@@ -224,6 +332,7 @@ function App() {
       id: createPageId(),
       title: "Untitled Page",
       content: "",
+      contentFormat: "html",
       icon: "📄",
       createdAt: now,
       updatedAt: now,
@@ -264,7 +373,7 @@ function App() {
   const selectedPage =
     pages.find((page) => page.id === selectedPageId) ?? null;
   const currentPageWordCount = selectedPage
-    ? countWords(selectedPage.content)
+    ? countWords(htmlToText(selectedPage.content))
     : 0;
 
   return (
@@ -656,48 +765,68 @@ function App() {
             <div className="notebook-editor-panel">
               {selectedPage ? (
                 <>
-                  <div className="notebook-editor-toolbar">
-                    <span className="notebook-save-status">
-                      Saved in this browser
-                    </span>
-                    <button
-                      type="button"
-                      className="notebook-delete-button"
-                      onClick={() => deletePage(selectedPage.id)}
-                    >
-                      <Trash2 size={15} strokeWidth={1.9} />
-                      Delete
-                    </button>
-                  </div>
-
                   <div className="notebook-document">
-                    <div className="notebook-icon" aria-hidden="true">
-                      {selectedPage.icon}
+                    <div className="notebook-document-header">
+                      <div className="notebook-document-identity">
+                        <div className="notebook-icon" aria-hidden="true">
+                          <FileText size={25} strokeWidth={1.7} />
+                        </div>
+                        <div className="notebook-title-group">
+                          <input
+                            className="notebook-title-input"
+                            value={selectedPage.title}
+                            aria-label="Page title"
+                            placeholder="Untitled Page"
+                            onChange={(event) =>
+                              updateSelectedPage({ title: event.target.value })
+                            }
+                          />
+                          <span className="notebook-last-edited">
+                            {getLastEditedLabel(selectedPage.updatedAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="notebook-document-actions">
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard?.writeText(window.location.href)}
+                        >
+                          <Share2 size={14} />
+                          <span>Share</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={selectedPage.favorite ? "active" : ""}
+                          aria-label={selectedPage.favorite ? "Remove from favorites" : "Add to favorites"}
+                          title={selectedPage.favorite ? "Remove from favorites" : "Add to favorites"}
+                          onClick={() => updateSelectedPage({ favorite: !selectedPage.favorite })}
+                        >
+                          <Star size={15} fill={selectedPage.favorite ? "currentColor" : "none"} />
+                        </button>
+                        <button
+                          type="button"
+                          className="notebook-delete-button"
+                          aria-label="Delete page"
+                          title="Delete page"
+                          onClick={() => deletePage(selectedPage.id)}
+                        >
+                          <Trash2 size={15} strokeWidth={1.9} />
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      className="notebook-title-input"
-                      value={selectedPage.title}
-                      aria-label="Page title"
-                      placeholder="Untitled Page"
-                      onChange={(event) =>
-                        updateSelectedPage({ title: event.target.value })
+                    <RichTextEditor
+                      key={selectedPage.id}
+                      content={selectedPage.content}
+                      isRichText={selectedPage.contentFormat === "html"}
+                      onChange={(content) =>
+                        updateSelectedPage({ content, contentFormat: "html" })
                       }
                     />
-                    <textarea
-                      className="notebook-content-input"
-                      value={selectedPage.content}
-                      aria-label="Page content"
-                      placeholder="Start writing your notes, ideas, plans, or study materials..."
-                      onChange={(event) =>
-                        updateSelectedPage({ content: event.target.value })
-                      }
-                    />
+                    <footer className="notebook-editor-footer">
+                      <span>{currentPageWordCount} words</span>
+                      <span>Automatically saved</span>
+                    </footer>
                   </div>
-
-                  <footer className="notebook-editor-footer">
-                    <span>{currentPageWordCount} words</span>
-                    <span>Automatically saved</span>
-                  </footer>
                 </>
               ) : (
                 <div className="notebook-editor-empty">
