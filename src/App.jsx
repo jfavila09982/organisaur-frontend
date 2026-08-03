@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 import organisaurLogo from "./assets/assets/logo/organisaur-logo-cropped.png";
+import PangeaPomodoroTimer from "./components/PangeaPomodoroTimer";
 import "./App.css";
 
 const NAV_ITEMS = [
@@ -860,14 +861,12 @@ function App() {
               {mode === "focus" ? "Focus session" : "Break time"}
             </span>
 
-            <p className="focus-timer">{formatTime(secondsLeft)}</p>
-
-            <div className="progress-track timer-track">
-              <div
-                className="progress-fill"
-                style={{ width: `${timerProgress}%` }}
-              />
-            </div>
+            <PangeaPomodoroTimer
+              time={formatTime(secondsLeft)}
+              progress={timerProgress}
+              mode={mode}
+              isRunning={isRunning}
+            />
 
             <div className="focus-controls">
               <button
