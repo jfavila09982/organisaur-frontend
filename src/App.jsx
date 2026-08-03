@@ -871,29 +871,48 @@ function App() {
             <div className="focus-controls">
               <button
                 type="button"
-                className="primary-button"
+                className={`focus-control focus-control--primary${
+                  isRunning ? " focus-control--pause" : ""
+                }`}
+                aria-label={isRunning ? "Pause focus timer" : "Start focus timer"}
                 onClick={() => setIsRunning((running) => !running)}
               >
                 {isRunning ? (
                   <>
-                    <Pause size={18} strokeWidth={2} />
-                    <span>Pause</span>
+                    <span className="focus-control__icon">
+                      <Pause size={17} strokeWidth={2.1} />
+                    </span>
+                    <span className="focus-control__copy">
+                      <strong>Pause</strong>
+                      <small>Hold your place</small>
+                    </span>
                   </>
                 ) : (
                   <>
-                    <Play size={18} strokeWidth={2} />
-                    <span>Start</span>
+                    <span className="focus-control__icon">
+                      <Play size={17} strokeWidth={2.1} fill="currentColor" />
+                    </span>
+                    <span className="focus-control__copy">
+                      <strong>Begin focus</strong>
+                      <small>Enter Pangea</small>
+                    </span>
                   </>
                 )}
               </button>
 
               <button
                 type="button"
-                className="filter"
+                className="focus-control focus-control--reset"
+                aria-label="Reset focus timer"
                 onClick={handleResetTimer}
               >
-                <RotateCcw size={15} strokeWidth={1.9} />
-                <span>Reset</span>
+                <span className="focus-control__icon">
+                  <RotateCcw size={16} strokeWidth={1.9} />
+                </span>
+                <span className="focus-control__copy">
+                  <strong>Reset</strong>
+                  <small>Start fresh</small>
+                </span>
               </button>
             </div>
 
